@@ -11,8 +11,16 @@ final ttsPlayerControllerProvider =
 class TtsPlayerControllerNotifier extends AsyncNotifier<TtsPlayerState> {
   final FlutterTts _flutterTts = FlutterTts();
 
-  String get text {
-    return ref.watch(textProvider);
+  int end = 1;
+
+  String get readText {
+    return ref.read(readTextProvider);
+  }
+
+  String get remainingText {
+    return ref.read(textProvider).substring(
+          end - 1,
+        );
   }
 
   @override
@@ -22,22 +30,40 @@ class TtsPlayerControllerNotifier extends AsyncNotifier<TtsPlayerState> {
 
   Future<void> play() async {
     state = const AsyncValue.data(TtsPlayerState.playing);
-    await _flutterTts.speak(text);
+    await _flutterTts.speak(remainingText);
+
     _flutterTts.setProgressHandler((text, start, end, word) {
       ref.read(readTextProvider.notifier).update((state) {
         String readText = "$state$word ";
         return readText;
       });
     });
-    _flutterTts.setCompletionHandler(() {
-      ref.read(readTextProvider.notifier).update((state) => "");
-      state = const AsyncValue.data(TtsPlayerState.idle);
+  }
+
+  Future<void> pause() async {
+    state = const AsyncValue.data(TtsPlayerState.paused);
+    end = ref.read(readTextProvider).length;
+    await _flutterTts.stop();
+  }
+
+  Future<void> resume() async {
+    state = const AsyncValue.data(TtsPlayerState.playing);
+
+    await _flutterTts.speak(remainingText);
+
+    _flutterTts.setProgressHandler((text, start, end, word) {
+      ref.read(readTextProvider.notifier).update((state) {
+        String readText = "$state$word ";
+        return readText;
+      });
     });
   }
 
   Future<void> stop() async {
     await _flutterTts.stop();
     ref.read(readTextProvider.notifier).update((state) => "");
+
+    end = 1;
     state = const AsyncValue.data(TtsPlayerState.idle);
   }
 }

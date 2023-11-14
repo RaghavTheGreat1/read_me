@@ -36,20 +36,50 @@ class HomeScreen extends HookConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ElevatedButton.icon(
-                onPressed: () async {
-                  await ref.read(ttsPlayerControllerProvider.notifier).play();
+              Consumer(
+                builder: (context, ref, _) {
+                  final playerState =
+                      ref.watch(ttsPlayerControllerProvider).value;
+                  return ElevatedButton.icon(
+                    onPressed: () async {
+                      if (playerState == TtsPlayerState.playing) {
+                        await ref
+                            .read(ttsPlayerControllerProvider.notifier)
+                            .pause();
+                        return;
+                      }
+                      if (playerState != TtsPlayerState.paused &&
+                          playerState == TtsPlayerState.idle) {
+                        await ref
+                            .read(ttsPlayerControllerProvider.notifier)
+                            .play();
+                      } else {
+                        await ref
+                            .read(ttsPlayerControllerProvider.notifier)
+                            .resume();
+                      }
+                    },
+                    icon: playerState == TtsPlayerState.playing
+                        ? const Icon(
+                            UniconsLine.pause,
+                          )
+                        : const Icon(
+                            UniconsLine.play,
+                          ),
+                    label: playerState == TtsPlayerState.playing
+                        ? const Text("Pause")
+                        : playerState == TtsPlayerState.paused
+                            ? const Text("Resume")
+                            : const Text("Play"),
+                    style: const ButtonStyle(
+                      padding: MaterialStatePropertyAll(
+                        EdgeInsets.all(16),
+                      ),
+                    ),
+                  );
                 },
-                icon: const Icon(
-                  UniconsLine.play,
-                ),
-                label: const Text("Play"),
-                style: const ButtonStyle(
-                  padding: MaterialStatePropertyAll(
-                    EdgeInsets.all(16),
-                  ),
-                ),
               ),
+
               const Gap(16),
               ElevatedButton.icon(
                 onPressed: () async {
@@ -65,77 +95,86 @@ class HomeScreen extends HookConsumerWidget {
                   ),
                 ),
               ),
+              const Gap(16),
+              // const ProgressSlider(),
             ],
           ),
           const Gap(16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                height: 400,
-                width: (size.width / 2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
+              Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Consumer(
-                    builder: (context, ref, _) {
-                      final isPlaying =
-                          ref.watch(ttsPlayerControllerProvider).value ==
-                              TtsPlayerState.playing;
+                  padding: EdgeInsets.symmetric(horizontal: size.width / 8),
+                  child: Container(
+                    height: 400,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: HookConsumer(
+                        builder: (context, ref, _) {
+                          final playerState =
+                              ref.watch(ttsPlayerControllerProvider).value;
+                          final toShow =
+                              playerState == TtsPlayerState.playing ||
+                                  playerState == TtsPlayerState.paused;
 
-                      return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        switchInCurve: Curves.easeIn,
-                        switchOutCurve: Curves.easeOut.flipped,
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: child,
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            switchInCurve: Curves.easeIn,
+                            switchOutCurve: Curves.easeOut,
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
+                            child: toShow
+                                ? Align(
+                                    alignment: Alignment.topLeft,
+                                    child: Consumer(
+                                      builder: (context, ref, _) {
+                                        final text =
+                                            ref.watch(readTextProvider);
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 8.0),
+                                          child: SingleChildScrollView(
+                                            child: Text(
+                                              text,
+                                              textAlign: TextAlign.justify,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : TextField(
+                                    controller: controller,
+                                    onChanged: (value) {
+                                      ref.read(textProvider.notifier).state =
+                                          controller.text;
+                                    },
+                                    maxLines: null,
+                                    minLines: null,
+                                    expands: true,
+                                    textAlign: TextAlign.justify,
+                                    decoration: const InputDecoration(
+                                      hintText: "Start typing here...",
+                                      fillColor: Colors.white,
+                                      border: InputBorder.none,
+                                    ),
+                                  ),
                           );
                         },
-                        child: isPlaying
-                            ? Align(
-                                alignment: Alignment.topLeft,
-                                child: Consumer(
-                                  builder: (context, ref, _) {
-                                    final text = ref.watch(readTextProvider);
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8.0),
-                                      child: SingleChildScrollView(
-                                        child: Text(
-                                          text,
-                                          textAlign: TextAlign.justify,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              )
-                            : TextField(
-                                controller: controller,
-                                onChanged: (value) {
-                                  ref.read(textProvider.notifier).state =
-                                      controller.text;
-                                },
-                                maxLines: null,
-                                minLines: null,
-                                expands: true,
-                                textAlign: TextAlign.justify,
-                                decoration: const InputDecoration(
-                                  hintText: "Start typing here...",
-                                  fillColor: Colors.white,
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -146,3 +185,4 @@ class HomeScreen extends HookConsumerWidget {
     );
   }
 }
+

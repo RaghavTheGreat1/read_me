@@ -1,4 +1,4 @@
-package com.example.read_me
+package com.rtg1.read_me
 
 import io.flutter.embedding.android.FlutterActivity
 
