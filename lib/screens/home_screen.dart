@@ -3,7 +3,9 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:read_me/controller/tts_player_controller.dart';
+import 'package:read_me/controllers/tts_player_controller.dart';
+import 'package:read_me/models/tts_player_state.dart';
+import 'package:read_me/providers/read_text_provider.dart';
 import 'package:unicons/unicons.dart';
 
 final textProvider = StateProvider<String>((ref) {
@@ -31,21 +33,39 @@ class HomeScreen extends HookConsumerWidget {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                await ref.read(ttsPlayerControllerProvider.notifier).play();
-              },
-              icon: const Icon(
-                UniconsLine.play,
-              ),
-              label: const Text("Play"),
-              style: const ButtonStyle(
-                padding: MaterialStatePropertyAll(
-                  EdgeInsets.all(16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await ref.read(ttsPlayerControllerProvider.notifier).play();
+                },
+                icon: const Icon(
+                  UniconsLine.play,
+                ),
+                label: const Text("Play"),
+                style: const ButtonStyle(
+                  padding: MaterialStatePropertyAll(
+                    EdgeInsets.all(16),
+                  ),
                 ),
               ),
-            ),
+              const Gap(16),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await ref.read(ttsPlayerControllerProvider.notifier).stop();
+                },
+                icon: const Icon(
+                  UniconsLine.square_shape,
+                ),
+                label: const Text("Stop"),
+                style: const ButtonStyle(
+                  padding: MaterialStatePropertyAll(
+                    EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+            ],
           ),
           const Gap(16),
           Row(
@@ -60,19 +80,62 @@ class HomeScreen extends HookConsumerWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    controller: controller,
-                    onChanged: (value) {
-                      ref.read(textProvider.notifier).state = controller.text;
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final isPlaying =
+                          ref.watch(ttsPlayerControllerProvider).value ==
+                              TtsPlayerState.playing;
+
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeIn,
+                        switchOutCurve: Curves.easeOut.flipped,
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          );
+                        },
+                        child: isPlaying
+                            ? Align(
+                                alignment: Alignment.topLeft,
+                                child: Consumer(
+                                  builder: (context, ref, _) {
+                                    final text = ref.watch(readTextProvider);
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8.0),
+                                      child: SingleChildScrollView(
+                                        child: Text(
+                                          text,
+                                          textAlign: TextAlign.justify,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              )
+                            : TextField(
+                                controller: controller,
+                                onChanged: (value) {
+                                  ref.read(textProvider.notifier).state =
+                                      controller.text;
+                                },
+                                maxLines: null,
+                                minLines: null,
+                                expands: true,
+                                textAlign: TextAlign.justify,
+                                decoration: const InputDecoration(
+                                  hintText: "Start typing here...",
+                                  fillColor: Colors.white,
+                                  border: InputBorder.none,
+                                ),
+                              ),
+                      );
                     },
-                    maxLines: null,
-                    minLines: null,
-                    expands: true,
-                    decoration: const InputDecoration(
-                      hintText: "Start typing here...",
-                      fillColor: Colors.white,
-                      border: InputBorder.none,
-                    ),
                   ),
                 ),
               ),
